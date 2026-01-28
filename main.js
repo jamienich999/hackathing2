@@ -11,12 +11,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
-  fetchSignInMethodsForEmail,
-  linkWithCredential,
-  EmailAuthProvider
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-import {
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
@@ -44,53 +38,76 @@ const resetBtn = document.getElementById("resetPassword")
 // --- Google sign in ---
 document.getElementById("googleLogin").onclick = async () => {
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    const email = result.user.email?.toLowerCase().trim();
+
+    if (!email || !email.endsWith("@dartmouth.edu")) {
+      status.textContent = "❌ Must sign in with a Dartmouth account";
+      await signOut(auth);
+      return;
+    }
   } catch (err) {
     status.textContent = err.message;
   }
 };
 
-document.getElementById("emailLogin").onclick = async () => {
+// --- Sign Up (Create new account) ---
+document.getElementById("signUp").onclick = async () => {
   const email = document.getElementById("email").value.trim().toLowerCase();
   const password = document.getElementById("password").value;
 
-  status.textContent = "Working...";
+  // Validate Dartmouth email before proceeding
+  if (!email.endsWith("@dartmouth.edu")) {
+    status.textContent = "❌ Must use a Dartmouth email (@dartmouth.edu)";
+    return;
+  }
+
+  if (password.length < 6) {
+    status.textContent = "❌ Password must be at least 6 characters.";
+    return;
+  }
+
+  status.textContent = "Creating account...";
 
   try {
-    // Attempt sign-in
-    await signInWithEmailAndPassword(auth, email, password);
+    await createUserWithEmailAndPassword(auth, email, password);
+    status.textContent = "✅ Account created successfully!";
   } catch (err) {
-
-    if (err.code === "auth/user-not-found") {
-      // Create account
-      await createUserWithEmailAndPassword(auth, email, password);
-      status.textContent = "Account created!";
+    if (err.code === "auth/email-already-in-use") {
+      status.textContent = "❌ This email is already registered. Try 'Sign In' with your password, or 'Sign in with Google' if you used Google.";
+    } else if (err.code === "auth/weak-password") {
+      status.textContent = "❌ Password should be at least 6 characters.";
+    } else {
+      status.textContent = `❌ Error: ${err.message}`;
     }
+  }
+};
 
-    else if (
-      err.code === "auth/wrong-password" ||
-      err.code === "auth/invalid-login-credentials"
-    ) {
-      // Check if this email exists under Google
-      const methods = await fetchSignInMethodsForEmail(auth, email);
+// --- Sign In (Existing account) ---
+document.getElementById("signIn").onclick = async () => {
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const password = document.getElementById("password").value;
 
-      if (methods.includes("google.com")) {
-        status.textContent =
-          "Account exists with Google. Sign in with Google to link password.";
+  // Validate Dartmouth email before proceeding
+  if (!email.endsWith("@dartmouth.edu")) {
+    status.textContent = "❌ Must use a Dartmouth email (@dartmouth.edu)";
+    return;
+  }
 
-        const googleResult = await signInWithPopup(auth, provider);
+  status.textContent = "Signing in...";
 
-        const credential = EmailAuthProvider.credential(email, password);
-        await linkWithCredential(googleResult.user, credential);
-
-        status.textContent = "✅ Password linked to Google account!";
-      } else {
-        status.textContent = "❌ Incorrect password.";
-      }
-    }
-
-    else {
-      status.textContent = err.code;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    status.textContent = "✅ Signed in successfully!";
+  } catch (err) {
+    if (err.code === "auth/invalid-credential" || err.code === "auth/invalid-login-credentials") {
+      status.textContent = "❌ Invalid email or password. If you signed up with Google, use 'Sign in with Google' button instead.";
+    } else if (err.code === "auth/user-not-found") {
+      status.textContent = "❌ No account found. Try 'Sign Up' or 'Sign in with Google' if you used Google.";
+    } else if (err.code === "auth/wrong-password") {
+      status.textContent = "❌ Incorrect password.";
+    } else {
+      status.textContent = `❌ Error: ${err.message}`;
     }
   }
 };
@@ -113,9 +130,11 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  status.textContent = `✅ Access granted: ${email}`;
-  logoutBtn.style.display = "inline";
-  resetBtn.style.display = "inline";
+  // Redirect to dashboard on successful login
+  status.textContent = `✅ Access granted! Redirecting...`;
+  setTimeout(() => {
+    window.location.href = "dashboard.html";
+  }, 500);
 });
 
 logoutBtn.onclick = async () => {
