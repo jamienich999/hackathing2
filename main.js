@@ -9,7 +9,9 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
+import {
+  sendEmailVerification
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -32,7 +34,6 @@ const provider = new GoogleAuthProvider();
 const status = document.getElementById("status");
 
 const logoutBtn = document.getElementById("logout");
-const resetBtn = document.getElementById("resetPassword")
 
 
 // --- Google sign in ---
@@ -46,6 +47,10 @@ document.getElementById("googleLogin").onclick = async () => {
       await signOut(auth);
       return;
     }
+    const providers = user.providerData.map(p => p.providerId);
+
+    status.textContent = "✅ Signed in successfully!";
+
   } catch (err) {
     status.textContent = err.message;
   }
@@ -70,8 +75,13 @@ document.getElementById("signUp").onclick = async () => {
   status.textContent = "Creating account...";
 
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
-    status.textContent = "✅ Account created successfully!";
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await sendEmailVerification(cred.user);
+
+    status.textContent =
+      "📧 Account created! Please verify your email before signing in.";
+
+    await signOut(auth);
   } catch (err) {
     if (err.code === "auth/email-already-in-use") {
       status.textContent = "❌ This email is already registered. Try 'Sign In' with your password, or 'Sign in with Google' if you used Google.";
@@ -122,6 +132,13 @@ onAuthStateChanged(auth, async (user) => {
 
   await user.reload();
 
+  if (!user.emailVerified && user.providerData[0]?.providerId === "password") {
+    status.textContent =
+      "📧 Please verify your email before accessing the dashboard.";
+    await signOut(auth);
+    return;
+  }
+
   const email = user.email?.toLowerCase().trim();
 
   if (!email || !email.endsWith("@dartmouth.edu")) {
@@ -136,11 +153,6 @@ onAuthStateChanged(auth, async (user) => {
     window.location.href = "dashboard.html";
   }, 500);
 });
-
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-  status.textContent = "Logged out";
-};
 
 document.getElementById("resetPassword").onclick = async () => {
   const email = document.getElementById("email").value.trim().toLowerCase();

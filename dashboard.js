@@ -4,6 +4,10 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyC3P8czqert8XqgDVfafVASfUNf98SPg5s",
@@ -21,6 +25,7 @@ const auth = getAuth(app);
 const userEmailElement = document.getElementById("userEmail");
 const status = document.getElementById("status");
 const logoutBtn = document.getElementById("logout");
+const resetBtn = document.getElementById("resetPassword")
 
 // Check authentication status
 onAuthStateChanged(auth, async (user) => {
@@ -35,11 +40,16 @@ onAuthStateChanged(auth, async (user) => {
 
   // Verify Dartmouth email
   if (!email || !email.endsWith("@dartmouth.edu")) {
-    status.textContent = "❌ Invalid account. Redirecting to login...";
+    status.textContent = "❌ Invalid account. Redirecting...";
     await signOut(auth);
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 2000);
+    setTimeout(() => window.location.href = "index.html", 1500);
+    return;
+  }
+
+  if (!user.emailVerified && user.providerData[0]?.providerId === "password") {
+    status.textContent = "📧 Please verify your email to access the dashboard.";
+    await signOut(auth);
+    setTimeout(() => window.location.href = "index.html", 2000);
     return;
   }
 
@@ -56,3 +66,30 @@ logoutBtn.onclick = async () => {
     status.textContent = `Error: ${err.message}`;
   }
 };
+
+// Detect providers
+const providers = user.providerData.map(p => p.providerId);
+const hasPassword = providers.includes("password");
+
+// Update button text
+resetBtn.textContent = hasPassword ? "Change password" : "Set password";
+
+resetBtn.onclick = async () => {
+  const user = auth.currentUser;
+
+  if (!user || !user.email) {
+    status.textContent = "No authenticated user.";
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, user.email);
+    status.textContent =
+      "📧 Password reset email sent to your account email.";
+  } catch (err) {
+    status.textContent = err.message;
+  }
+};
+
+//Add reset password
+//Add verification email
