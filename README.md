@@ -76,3 +76,13 @@ A Firebase-based authentication system that restricts login to Dartmouth email a
 - `main.js` - Login page logic
 - `dashboard.js` - Dashboard logic
 - `README.md` - This file
+
+
+## Who Did What
+Jamie worked on the Firebase initial setup and basic (no CSS) code; Neha fixed connectivity issues and made it pretty
+
+## What We Learned/How It Relates
+Our intention was to learn how to ensure that only users with legitimate Dartmouth emails could sign up, and we think we were able to accomplish that! That's one roadblock out of the way. Also, we learned how to navigate Firebase, which will probably be helpful if we want to host our site there (or somewhere similar)
+
+## What Didn't Work
+There were some issues in making sure Gmail accounts also became email/password accounts because Firebase doesn't allow you to immediately set a password after signing in with Google. We may need to find a workaround of this, or only have the Sign In with Google button...
